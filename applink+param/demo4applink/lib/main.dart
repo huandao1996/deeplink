@@ -23,30 +23,18 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
 
   StreamSubscription? _sub;
 
-  late final TabController _tabController;
   UniLinksType _type = UniLinksType.string;
-  final TextStyle _cmdStyle = const TextStyle(
-      fontFamily: 'Courier', fontSize: 12.0, fontWeight: FontWeight.w700);
+  final TextStyle _cmdStyle = const TextStyle(fontFamily: 'Courier', fontSize: 12.0, fontWeight: FontWeight.w700);
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(vsync: this, length: 2)
-      ..addListener(_handleTabChange);
     initPlatformState();
-  }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> initPlatformState() async {
     if (_type == UniLinksType.string) {
       await initPlatformStateForStringUniLinks();
-    } else {
-      await initPlatformStateForUriUniLinks();
     }
   }
 
@@ -71,14 +59,12 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
         });
       });
 
-    // Attach a second listener to the stream
     if (!kIsWeb)
       linkStream.listen((String? link) {
         print('got link: $link');
       }, onError: (Object err) {
         print('got err: $err');
       });
-
     try {
       _initialLink = await getInitialLink();
       print('initial link: $_initialLink');
@@ -90,30 +76,12 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
       _initialLink = 'Failed to parse the initial link as Uri.';
       _initialUri = null;
     }
-  }
 
-  /// An implementation using the [Uri] convenience helpers
-  Future<void> initPlatformStateForUriUniLinks() async {
-    // Attach a listener to the Uri links stream
-    if (!kIsWeb)
-      _sub = uriLinkStream.listen((Uri? uri) {
-        if (!mounted) return;
-        setState(() {
-          _latestUri = uri;
-          _latestLink = uri?.toString() ?? 'Unknown';
-        });
-      }, onError: (Object err) {
-        if (!mounted) return;
-        setState(() {
-          _latestUri = null;
-          _latestLink = 'Failed to get latest link: $err.';
-        });
-      });
     if (!mounted) return;
 
     setState(() {
-      _latestUri = _initialUri;
       _latestLink = _initialLink;
+      _latestUri = _initialUri;
     });
   }
 
@@ -123,74 +91,38 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Applink + param'),
-        // bottom: TabBar(
-        //   controller: _tabController,
-        //   tabs: const [
-        //     Tab(text: 'STRING LINK'),
-        //     Tab(text: 'URI'),
-        //   ],
-        // ),
+        title: const Text('Plugin example app'),
       ),
       body: ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.all(8.0),
         children: [
-          if (!kIsWeb)
-            ListTile(
-              title: const Text('Link'),
-              subtitle: Text('$_latestLink'),
-            ),
+          ListTile(
+            title: const Text('Initial Link'),
+            subtitle: Text('$_initialLink'),
+          ),
           ExpansionTile(
             initiallyExpanded: true,
             title: const Text('Query params'),
             children: queryParams == null
                 ? const [
-              ListTile(
-                dense: true,
-                title: const Text('null'),
-              ),
-            ] : [
-              for (final item in queryParams)
-                ListTile(
-                  title: Text(item.key),
-                  trailing: Text(
-                    item.value.join(', '),
-                  ),
-                ),
-            ],
+                    ListTile(
+                      dense: true,
+                      title: const Text('null'),
+                    ),
+                  ]
+                : [
+                    for (final item in queryParams)
+                      ListTile(
+                        title: Text(item.key),
+                        trailing: Text(
+                          item.value.join(', '),
+                        ),
+                      ),
+                  ],
           ),
-
         ],
       ),
     );
   }
-
-
-
-  void _handleTabChange() {
-    if (_tabController.indexIsChanging) {
-      setState(() {
-        _type = UniLinksType.values[_tabController.index];
-      });
-      initPlatformState();
-    }
-  }
-
-  Future<void> _printAndCopy(String cmd) async {
-    print(cmd);
-
-    await Clipboard.setData(ClipboardData(text: cmd));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Copied to Clipboard')),
-    );
-  }
-}
-List<Widget> intersperse(Iterable<Widget> list, Widget item) {
-  final initialValue = <Widget>[];
-  return list.fold(initialValue, (all, el) {
-    if (all.isNotEmpty) all.add(item);
-    all.add(el);
-    return all;
-  });
 }
